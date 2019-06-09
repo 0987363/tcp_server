@@ -1,16 +1,23 @@
 package tcp_server
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"net"
+	"runtime/debug"
+	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Client holds info about connection
 type Client struct {
 	conn net.Conn
-	Keys map[string]interface{}
+	//	Keys map[string]interface{}
+	ctx  context.Context
+	lock sync.RWMutex
 
 	cache []byte
 	index int8
@@ -34,7 +41,8 @@ type HandlerFunc func(*Client)
 type HandlersChain []HandlerFunc
 
 const (
-	ClientKey = "clientKey"
+	ClientKey = "Client"
+	LoggerKey = "Logger"
 )
 
 func (s *Server) Use(middleware ...HandlerFunc) {
@@ -71,15 +79,16 @@ func (c *Client) listen() {
 }
 
 func (c *Client) Set(key string, value interface{}) {
-	if c.Keys == nil {
-		c.Keys = make(map[string]interface{})
-	}
-	c.Keys[key] = value
+	c.lock.Lock()
+	c.ctx = context.WithValue(c.ctx, key, value)
+	c.lock.Unlock()
 }
 
-func (c *Client) Get(key string) (value interface{}, exists bool) {
-	value, exists = c.Keys[key]
-	return
+func (c *Client) Get(key string) interface{} {
+	c.lock.RLock()
+	v := c.ctx.Value(key)
+	c.lock.RUnlock()
+	return v
 }
 
 func (c *Client) Recv() ([]byte, error) {
@@ -115,7 +124,20 @@ func (s *Server) OnConnectionClosed(callback func(c *Client, err error)) {
 
 // Called when Client receives new message
 func (s *Server) OnNewMessage(callback func(c *Client, message []byte) error) {
-	s.onNewMessage = callback
+	s.onNewMessage = func(c *Client, message []byte) error {
+		logger, ok := c.Get(LoggerKey).(*logrus.Logger)
+		if !ok {
+			logger = logrus.New()
+		}
+
+		defer func() {
+			if result := recover(); result != nil {
+				logger.Errorf("recv stack: %s\n%s\n", result, string(debug.Stack()))
+			}
+		}()
+
+		return callback(c, message)
+	}
 }
 
 // Listen starts network server
@@ -140,6 +162,7 @@ func (s *Server) Listen(ln net.Listener) {
 			Server: *s,
 			cache:  make([]byte, 4096),
 			index:  -1,
+			ctx:    context.Background(),
 		}
 		go client.listen()
 	}

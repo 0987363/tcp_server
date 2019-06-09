@@ -7,6 +7,7 @@ import (
 	"time"
 
 	ts "github.com/0987363/tcp_server"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -33,15 +34,15 @@ func main() {
 
 	server.OnNewMessage(func(c *ts.Client, message []byte) error {
 		fmt.Println("recv:", string(message))
-		if v, ok := c.Get("logger"); ok {
-			fmt.Println("middware logger:", v)
+		if logger, ok := c.Get("logger").(*logrus.Logger); ok {
+			logger.Info("middware logger")
 		}
 		return nil
 	})
 	server.OnConnectionClosed(func(c *ts.Client, err error) {
 		fmt.Println("close, err:", err)
 	})
-	go server.Listen()
+	go server.Listen(nil)
 
 	time.Sleep(10 * time.Millisecond)
 
