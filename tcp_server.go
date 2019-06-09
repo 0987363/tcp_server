@@ -119,21 +119,22 @@ func (s *Server) OnNewMessage(callback func(c *Client, message []byte) error) {
 }
 
 // Listen starts network server
-func (s *Server) Listen() {
-	var listener net.Listener
-	var err error
-	if s.config == nil {
-		listener, err = net.Listen("tcp", s.address)
-	} else {
-		listener, err = tls.Listen("tcp", s.address, s.config)
+func (s *Server) Listen(ln net.Listener) {
+	if ln == nil {
+		var err error
+		if s.config == nil {
+			ln, err = net.Listen("tcp", s.address)
+		} else {
+			ln, err = tls.Listen("tcp", s.address, s.config)
+		}
+		if err != nil {
+			log.Fatal("Error starting TCP server.")
+		}
 	}
-	if err != nil {
-		log.Fatal("Error starting TCP server.")
-	}
-	defer listener.Close()
+	defer ln.Close()
 
 	for {
-		conn, _ := listener.Accept()
+		conn, _ := ln.Accept()
 		client := &Client{
 			conn:   conn,
 			Server: *s,
