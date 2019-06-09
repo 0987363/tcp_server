@@ -78,6 +78,10 @@ func (c *Client) listen() {
 	}
 }
 
+func (c *Client) RemoteAddr() string {
+	return c.conn.RemoteAddr().String()
+}
+
 func (c *Client) Set(key string, value interface{}) {
 	c.lock.Lock()
 	c.ctx = context.WithValue(c.ctx, key, value)
