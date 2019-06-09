@@ -1,50 +1,98 @@
 package tcp_server
 
 import (
-	"bufio"
 	"crypto/tls"
 	"log"
 	"net"
+	"time"
 )
 
 // Client holds info about connection
 type Client struct {
-	conn   net.Conn
-	Server *server
+	conn net.Conn
+	Keys map[string]interface{}
+
+	cache []byte
+	index int8
+
+	Server
 }
 
 // TCP server
-type server struct {
-	address                  string // Address to open connection: localhost:9999
-	config                   *tls.Config
-	onNewClientCallback      func(c *Client)
-	onClientConnectionClosed func(c *Client, err error)
-	onNewMessage             func(c *Client, message string)
+type Server struct {
+	address string // Address to open connection: localhost:9999
+	config  *tls.Config
+
+	onConnectionOpen   func(c *Client) error
+	onConnectionClosed func(c *Client, err error)
+	onNewMessage       func(c *Client, message []byte) error
+
+	Handlers HandlersChain
 }
 
-// Read client data from channel
-func (c *Client) listen() {
-	c.Server.onNewClientCallback(c)
-	reader := bufio.NewReader(c.conn)
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			c.conn.Close()
-			c.Server.onClientConnectionClosed(c, err)
-			return
-		}
-		c.Server.onNewMessage(c, message)
+type HandlerFunc func(*Client)
+type HandlersChain []HandlerFunc
+
+const (
+	ClientKey = "clientKey"
+)
+
+func (s *Server) Use(middleware ...HandlerFunc) {
+	s.Handlers = append(s.Handlers, middleware...)
+}
+
+func (c *Client) Next() {
+	c.index++
+	for s := int8(len(c.Handlers)); c.index < s; c.index++ {
+		c.Handlers[c.index](c)
 	}
 }
 
-// Send text message to client
-func (c *Client) Send(message string) error {
-	_, err := c.conn.Write([]byte(message))
-	return err
+func (c *Client) listen() {
+	defer c.conn.Close()
+
+	c.Next()
+	if err := c.onConnectionOpen(c); err != nil {
+		return
+	}
+
+	for {
+		msg, err := c.Recv()
+		if err != nil {
+			c.onConnectionClosed(c, err)
+			return
+		}
+
+		if err := c.onNewMessage(c, msg); err != nil {
+			c.onConnectionClosed(c, err)
+			return
+		}
+	}
 }
 
-// Send bytes to client
-func (c *Client) SendBytes(b []byte) error {
+func (c *Client) Set(key string, value interface{}) {
+	if c.Keys == nil {
+		c.Keys = make(map[string]interface{})
+	}
+	c.Keys[key] = value
+}
+
+func (c *Client) Get(key string) (value interface{}, exists bool) {
+	value, exists = c.Keys[key]
+	return
+}
+
+func (c *Client) Recv() ([]byte, error) {
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	n, err := c.conn.Read(c.cache)
+	if err != nil {
+		return nil, err
+	}
+	return c.cache[:n], nil
+}
+
+func (c *Client) Send(b []byte) error {
+	c.conn.SetWriteDeadline(time.Now().Add(60 * time.Second))
 	_, err := c.conn.Write(b)
 	return err
 }
@@ -57,23 +105,21 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Called right after server starts listening new client
-func (s *server) OnNewClient(callback func(c *Client)) {
-	s.onNewClientCallback = callback
+func (s *Server) OnConnectionOpen(callback func(c *Client) error) {
+	s.onConnectionOpen = callback
 }
 
-// Called right after connection closed
-func (s *server) OnClientConnectionClosed(callback func(c *Client, err error)) {
-	s.onClientConnectionClosed = callback
+func (s *Server) OnConnectionClosed(callback func(c *Client, err error)) {
+	s.onConnectionClosed = callback
 }
 
 // Called when Client receives new message
-func (s *server) OnNewMessage(callback func(c *Client, message string)) {
+func (s *Server) OnNewMessage(callback func(c *Client, message []byte) error) {
 	s.onNewMessage = callback
 }
 
 // Listen starts network server
-func (s *server) Listen() {
+func (s *Server) Listen() {
 	var listener net.Listener
 	var err error
 	if s.config == nil {
@@ -90,41 +136,41 @@ func (s *server) Listen() {
 		conn, _ := listener.Accept()
 		client := &Client{
 			conn:   conn,
-			Server: s,
+			Server: *s,
+			cache:  make([]byte, 4096),
+			index:  -1,
 		}
 		go client.listen()
 	}
 }
 
 // Creates new tcp server instance
-func New(address string) *server {
-	log.Println("Creating server with address", address)
-	server := &server{
+func New(address string) *Server {
+	server := &Server{
 		address: address,
 		config:  nil,
 	}
 
-	server.OnNewClient(func(c *Client) {})
-	server.OnNewMessage(func(c *Client, message string) {})
-	server.OnClientConnectionClosed(func(c *Client, err error) {})
+	server.OnConnectionOpen(func(c *Client) error { return nil })
+	server.OnNewMessage(func(c *Client, message []byte) error { return nil })
+	server.OnConnectionClosed(func(c *Client, err error) {})
 
 	return server
 }
 
-func NewWithTLS(address string, certFile string, keyFile string) *server {
-	log.Println("Creating server with address", address)
+func NewWithTLS(address string, certFile string, keyFile string) *Server {
 	cert, _ := tls.LoadX509KeyPair(certFile, keyFile)
 	config := tls.Config{
 		Certificates: []tls.Certificate{cert},
 	}
-	server := &server{
+	server := &Server{
 		address: address,
 		config:  &config,
 	}
 
-	server.OnNewClient(func(c *Client) {})
-	server.OnNewMessage(func(c *Client, message string) {})
-	server.OnClientConnectionClosed(func(c *Client, err error) {})
+	server.OnConnectionOpen(func(c *Client) error { return nil })
+	server.OnNewMessage(func(c *Client, message []byte) error { return nil })
+	server.OnConnectionClosed(func(c *Client, err error) {})
 
 	return server
 }

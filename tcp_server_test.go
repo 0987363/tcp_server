@@ -1,39 +1,36 @@
 package tcp_server
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"net"
 	"testing"
 	"time"
 )
 
-func buildTestServer() *server {
+func buildTestServer() *Server {
 	return New("localhost:9999")
 }
 
 func Test_accepting_new_client_callback(t *testing.T) {
 	server := buildTestServer()
-
-	var messageReceived bool
-	var messageText string
-	var newClient bool
-	var connectinClosed bool
-
-	server.OnNewClient(func(c *Client) {
-		newClient = true
+	server.Use(func(c *Client){
+		t.Error("Init logger.")
 	})
-	server.OnNewMessage(func(c *Client, message string) {
-		messageReceived = true
-		messageText = message
+
+//	server.OnConnectionOpen(func(c *Client) {
+//		t.Error("start connection")
+//	})
+	server.OnNewMessage(func(c *Client, message []byte) error {
+		t.Log("recv:", string(message))
+		return nil
 	})
-	server.OnClientConnectionClosed(func(c *Client, err error) {
-		connectinClosed = true
+	server.OnConnectionClosed(func(c *Client, err error) {
+		t.Log("close, err:", err)
 	})
 	go server.Listen()
 
 	// Wait for server
 	// If test fails - increase this value
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	conn, err := net.Dial("tcp", "localhost:9999")
 	if err != nil {
@@ -43,18 +40,5 @@ func Test_accepting_new_client_callback(t *testing.T) {
 	conn.Close()
 
 	// Wait for server
-	time.Sleep(10 * time.Millisecond)
-
-	Convey("Messages should be equal", t, func() {
-		So(messageText, ShouldEqual, "Test message\n")
-	})
-	Convey("It should receive new client callback", t, func() {
-		So(newClient, ShouldEqual, true)
-	})
-	Convey("It should receive message callback", t, func() {
-		So(messageReceived, ShouldEqual, true)
-	})
-	Convey("It should receive connection closed callback", t, func() {
-		So(connectinClosed, ShouldEqual, true)
-	})
+	time.Sleep(20 * time.Millisecond)
 }
