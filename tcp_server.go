@@ -19,8 +19,9 @@ type Client struct {
 	ctx  context.Context
 	lock sync.RWMutex
 
-	cache []byte
-	index int8
+	cache  []byte
+	size   int
+	index  int
 
 	Server
 }
@@ -51,7 +52,7 @@ func (s *Server) Use(middleware ...HandlerFunc) {
 
 func (c *Client) Next() {
 	c.index++
-	for s := int8(len(c.Handlers)); c.index < s; c.index++ {
+	for s := len(c.Handlers); c.index < s; c.index++ {
 		c.Handlers[c.index](c)
 	}
 }
@@ -60,6 +61,7 @@ func (c *Client) listen() {
 	defer c.conn.Close()
 
 	c.Next()
+
 	if err := c.onConnectionOpen(c); err != nil {
 		return
 	}
@@ -78,6 +80,32 @@ func (c *Client) listen() {
 	}
 }
 
+func (c *Client) Trim(length int) {
+	if length > c.size {
+		c.size = 0
+		return
+	}
+
+	copy(c.cache, c.cache[length:c.size])
+	c.size -= length
+}
+
+func (c *Client) Recv() ([]byte, error) {
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	n, err := c.conn.Read(c.cache[c.size:])
+	if err != nil {
+		return nil, err
+	}
+	c.size += n
+	return c.cache[:c.size], nil
+}
+
+func (c *Client) Send(b []byte) error {
+	c.conn.SetWriteDeadline(time.Now().Add(60 * time.Second))
+	_, err := c.conn.Write(b)
+	return err
+}
+
 func (c *Client) RemoteAddr() string {
 	return c.conn.RemoteAddr().String()
 }
@@ -94,22 +122,6 @@ func (c *Client) Get(key string) interface{} {
 	c.lock.RUnlock()
 	return v
 }
-
-func (c *Client) Recv() ([]byte, error) {
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	n, err := c.conn.Read(c.cache)
-	if err != nil {
-		return nil, err
-	}
-	return c.cache[:n], nil
-}
-
-func (c *Client) Send(b []byte) error {
-	c.conn.SetWriteDeadline(time.Now().Add(60 * time.Second))
-	_, err := c.conn.Write(b)
-	return err
-}
-
 func (c *Client) Conn() net.Conn {
 	return c.conn
 }
