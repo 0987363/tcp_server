@@ -9,19 +9,22 @@ import (
 	"sync"
 	"time"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 )
 
 // Client holds info about connection
 type Client struct {
 	conn net.Conn
-	//	Keys map[string]interface{}
 	ctx  context.Context
 	lock sync.RWMutex
 
-	cache  []byte
-	size   int
-	index  int
+	cache []byte
+	size  int
+	index int
+
+	requestID  string
+	remoteAddr string
 
 	Server
 }
@@ -58,7 +61,7 @@ func (c *Client) Next() {
 }
 
 func (c *Client) listen() (err error) {
-	defer func(){
+	defer func() {
 		c.conn.Close()
 		c.onConnectionClosed(c, err)
 	}()
@@ -104,7 +107,11 @@ func (c *Client) Send(b []byte) error {
 }
 
 func (c *Client) RemoteAddr() string {
-	return c.conn.RemoteAddr().String()
+	return c.remoteAddr
+}
+
+func (c *Client) RequestID() string {
+	return c.requestID
 }
 
 func (c *Client) Set(key string, value interface{}) {
@@ -171,11 +178,13 @@ func (s *Server) Listen(ln net.Listener) {
 	for {
 		conn, _ := ln.Accept()
 		client := &Client{
-			conn:   conn,
-			Server: *s,
-			cache:  make([]byte, 4096),
-			index:  -1,
-			ctx:    context.Background(),
+			conn:       conn,
+			Server:     *s,
+			cache:      make([]byte, 4096),
+			index:      -1,
+			ctx:        context.Background(),
+			requestID:  uuid.NewV4().String(),
+			remoteAddr: conn.RemoteAddr().String(),
 		}
 		go client.listen()
 	}
