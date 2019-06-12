@@ -57,25 +57,22 @@ func (c *Client) Next() {
 	}
 }
 
-func (c *Client) listen() {
-	defer c.conn.Close()
+func (c *Client) listen() (err error) {
+	defer func(){
+		c.conn.Close()
+		c.onConnectionClosed(c, err)
+	}()
 
 	c.Next()
-
-	if err := c.onConnectionOpen(c); err != nil {
-		return
-	}
 
 	for {
 		msg, err := c.Recv()
 		if err != nil {
-			c.onConnectionClosed(c, err)
-			return
+			return err
 		}
 
 		if err := c.onNewMessage(c, msg); err != nil {
-			c.onConnectionClosed(c, err)
-			return
+			return err
 		}
 	}
 }
