@@ -7,43 +7,39 @@ import (
 
 type Udp struct {
 	conn       *net.UDPConn
-	remtoeAddr string
+//	remtoeAddr string
+	remote *net.UDPAddr
 }
 
 func (udp *Udp) RemoteAddr() string {
-	return udp.remtoeAddr
+	return udp.remote.String()
 }
 
 func (udp *Udp) Run(c *Context) {
+	var err error
 	for {
-		n, remote, err := udp.recv(c.cache[c.size:])
+		c.size, err = udp.Recv(c.cache)
 		if err != nil {
 			log.Printf("Recv udp failed:", err)
 			continue
 		}
-		c.size += n
-		udp.remtoeAddr = remote.String()
 
 		c.onConnectionOpen(c)
-		msg, err := c.onNewMessage(c)
-		if err != nil {
-			c.AbortWithError(err)
-		}
-		if msg != nil {
-			if _, err := udp.send(remote, msg); err != nil {
-				log.Printf("Send udp failed:", err)
-			}
-		}
+		c.onNewMessage(c)
 		c.onConnectionClosed(c)
+
+		c.Reset()
 	}
 }
 
-func (udp *Udp) recv(cache []byte) (int, *net.UDPAddr, error) {
-	return udp.conn.ReadFromUDP(cache)
+func (udp *Udp) Recv(cache []byte) (int, error) {
+	n, remote, err := udp.conn.ReadFromUDP(cache)
+	udp.remote = remote
+	return n, err
 }
 
-func (udp *Udp) send(addr *net.UDPAddr, data []byte) (int, error) {
-	return udp.conn.WriteToUDP(data, addr)
+func (udp *Udp) Send(data []byte) (int, error) {
+	return udp.conn.WriteToUDP(data, udp.remote)
 }
 
 func (udp *Udp) Close() error {

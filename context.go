@@ -24,7 +24,7 @@ type Context struct {
 
 	onConnectionOpen   func(c *Context)
 	onConnectionClosed func(c *Context)
-	onNewMessage       func(c *Context) ([]byte, error)
+	onNewMessage       func(c *Context)
 
 	isOpened bool
 }
@@ -41,6 +41,14 @@ func (c *Context) IsAborted() bool {
 
 func (c *Context) AbortWithError(err error) {
 	c.Errors = append(c.Errors, err)
+}
+
+func (c *Context) Data(data []byte) (int, error) {
+	return c.conn.Send(data)
+}
+func (c *Context) DataWithError(data []byte, err error) {
+	c.Data(data)
+	c.AbortWithError(err)
 }
 
 func (c *Context) Set(key string, value interface{}) {
@@ -76,12 +84,13 @@ func (c *Context) Trim(length int) {
 	c.size -= length
 }
 
-func (c *Context) GetData() []byte {
+func (c *Context) ReadData() []byte {
 	return c.cache[:c.size]
 }
 
 func (c *Context) Reset() {
-	c.cache = c.cache[0:0]
+	c.Errors = c.Errors[:0]
+	c.size = 0
 }
 
 /*

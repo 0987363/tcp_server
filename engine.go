@@ -29,7 +29,7 @@ type Engine struct {
 
 	onConnectionOpen   func(c *Context)
 	onConnectionClosed func(c *Context)
-	onNewMessage       func(c *Context) ([]byte, error)
+	onNewMessage       func(c *Context)
 
 	handlers HandlersChain
 }
@@ -46,7 +46,7 @@ func (s *Engine) OnConnectionClosed(callback func(c *Context)) {
 	s.onConnectionClosed = callback
 }
 
-func (s *Engine) OnNewMessage(callback func(c *Context) ([]byte, error)) {
+func (s *Engine) OnNewMessage(callback func(c *Context) ) {
 	s.onNewMessage = callback
 }
 
@@ -56,25 +56,22 @@ func (engine *Engine) NewContext(conn Connection) *Context {
 		cache:  make([]byte, engine.cacheSize),
 		engine: engine,
 		index:  -1,
-		handlers: make(HandlersChain, len(engine.handlers)),
+		handlers: make(HandlersChain, len(engine.handlers) + 1),
 	}
 	copy(c.handlers, engine.handlers)
+	c.handlers[len(c.handlers) - 1] = conn.Run
 
 	c.onConnectionOpen = func(c *Context) {
 		c.isOpened = true
-		c.Next()
 		if engine.onConnectionOpen != nil {
 			engine.onConnectionOpen(c)
 		}
 	}
 
-	c.onNewMessage = func(c *Context) ([]byte, error) {
-		c.Next()
+	c.onNewMessage = func(c *Context) {
 		if engine.onNewMessage != nil {
-			return engine.onNewMessage(c)
+			engine.onNewMessage(c)
 		}
-
-		return nil, nil
 	}
 
 	c.onConnectionClosed = func(c *Context) {
@@ -101,7 +98,7 @@ func (s *Engine) Listen() {
 
 		for i := 0; i < s.udpProc; i++ {
 			c := s.NewContext(&Udp{conn: conn})
-			go c.run()
+			go c.Next()
 		}
 	}
 
@@ -128,7 +125,7 @@ func (s *Engine) Listen() {
 			conn:    conn,
 			timeout: s.timeout,
 		})
-		go c.run()
+		go c.Next()
 	}
 }
 

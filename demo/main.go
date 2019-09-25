@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	ts "github.com/0987363/tcp_server"
@@ -22,6 +21,7 @@ func DBConnector() ts.HandlerFunc {
 	return func(c *ts.Context) {
 		fmt.Println("Init db.")
 		c.Next()
+		defer fmt.Println("Close db")
 	}
 }
 
@@ -65,25 +65,19 @@ func main() {
 		return
 	})
 
-	server.OnNewMessage(func(c *ts.Context) ([]byte, error) {
-		message := c.GetData()
+	server.OnNewMessage(func(c *ts.Context) {
+		message := c.ReadData()
 		logger := GetLogger(c)
 
-		if res := strings.Compare(string(message), "Test Message"); res != 0 {
-			fmt.Println("failed msg:", string(message), res, len(message))
-			//			return errors.New("Compair failed:" + string(message))
-		}
 		c.Set("device", string(message))
-		logger.Debug("event keys:", c.Keys)
-		logger.Debug("recv:", string(message), len(message))
+		logger.Info("recv:", string(message), len(message))
 
-		logger.Info("middware logger found.")
 		logger.Info("remote: ", c.RemoteAddr())
 		//		time.Sleep(time.Second)
 
 		c.Trim(len(message))
 		//		return []byte("hello world"), nil
-		return nil, errors.New("Compair failed.")
+		c.AbortWithError(errors.New("Compair failed."))
 	})
 
 	server.OnConnectionClosed(func(c *ts.Context) {
@@ -94,6 +88,7 @@ func main() {
 			logger.Info("spend :", time.Now().Sub(begin))
 		}
 
+		logger.Info("connection closed, err:", len(c.Errors))
 		for _, err := range c.Errors {
 			if err == io.EOF {
 				logger.Info("connection normal closed")
@@ -141,6 +136,8 @@ func main() {
 				log.Fatal("Failed to connect to test server")
 			}
 			conn.Write([]byte("i am udp:" + strconv.Itoa(i)))
+			time.Sleep(10 * time.Millisecond)
+			conn.Write([]byte("udp is good."))
 			time.Sleep(10 * time.Millisecond)
 			conn.Close()
 		}(i)
