@@ -141,6 +141,10 @@ func (engine *Engine) SetUdpProc(n int) {
 	engine.udpProc = n
 }
 
+func (engine *Engine) SetAddress(address int) {
+	engine.address = address
+}
+
 func newEngine() *Engine {
 	return &Engine{
 		timeout:   time.Minute,

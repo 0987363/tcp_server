@@ -41,6 +41,34 @@ func GetLogger(c *ts.Context) *logrus.Entry {
 	return nil
 }
 
+func Auth() ts.HandlerFunc {
+	return func(c *ts.Context) {
+		logger := GetLogger(c)
+		logger.Info("auth opended")
+		c.Next()
+
+		logger.Info("auth closed, err:", len(c.Errors))
+		for _, err := range c.Errors {
+			if err == io.EOF {
+				logger.Info("connection normal closed")
+				continue
+			}
+			if err, ok := err.(net.Error); ok {
+				if err.Timeout() {
+					logger.Warning("connection timeout")
+					continue
+				}
+				if ts.IsErrConnReset(err) {
+					logger.Info("connection normal closed by remote ")
+					continue
+				}
+			}
+			logger.Error("found err:", err)
+		}
+
+	}
+}
+
 func main() {
 	server := ts.New("localhost:9999")
 	server.SetUdpProc(1)
@@ -55,7 +83,9 @@ func main() {
 	*/
 	server.Use(DBConnector())
 	server.Use(Logger())
+	server.Use(Auth())
 
+	/*
 	server.OnConnectionOpen(func(c *ts.Context) {
 		logger := GetLogger(c)
 		logger.Info("connection opended")
@@ -64,6 +94,7 @@ func main() {
 
 		return
 	})
+	*/
 
 	server.OnNewMessage(func(c *ts.Context) {
 		message := c.ReadData()
@@ -80,6 +111,7 @@ func main() {
 		c.AbortWithError(errors.New("Compair failed."))
 	})
 
+	/*
 	server.OnConnectionClosed(func(c *ts.Context) {
 		logger := GetLogger(c)
 
@@ -107,6 +139,7 @@ func main() {
 			logger.Error("found err:", err)
 		}
 	})
+	*/
 
 	go server.Listen()
 
