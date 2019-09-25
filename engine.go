@@ -46,7 +46,6 @@ func (s *Engine) OnConnectionClosed(callback func(c *Context)) {
 	s.onConnectionClosed = callback
 }
 
-// Called when Context receives new message
 func (s *Engine) OnNewMessage(callback func(c *Context) ([]byte, error)) {
 	s.onNewMessage = callback
 }

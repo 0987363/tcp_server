@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -78,11 +79,11 @@ func main() {
 
 		logger.Info("middware logger found.")
 		logger.Info("remote: ", c.RemoteAddr())
-//		time.Sleep(time.Second)
+		//		time.Sleep(time.Second)
 
 		c.Trim(len(message))
-		return []byte("hello world"), nil
-		//		return errors.New("Compair failed.")
+		//		return []byte("hello world"), nil
+		return nil, errors.New("Compair failed.")
 	})
 
 	server.OnConnectionClosed(func(c *ts.Context) {
@@ -108,7 +109,7 @@ func main() {
 					continue
 				}
 			}
-			logger.Error("connection err:", err)
+			logger.Error("found err:", err)
 		}
 	})
 
@@ -133,7 +134,7 @@ func main() {
 	time.Sleep(time.Second)
 	time.Sleep(time.Second)
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		go func(i int) {
 			conn, err = net.Dial("udp", "localhost:9999")
 			if err != nil {

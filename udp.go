@@ -1,6 +1,9 @@
 package tcp_server
 
-import "net"
+import (
+	"log"
+	"net"
+)
 
 type Udp struct {
 	conn       *net.UDPConn
@@ -15,15 +18,21 @@ func (udp *Udp) Run(c *Context) {
 	for {
 		n, remote, err := udp.recv(c.cache[c.size:])
 		if err != nil {
+			log.Printf("Recv udp failed:", err)
 			continue
 		}
 		c.size += n
 		udp.remtoeAddr = remote.String()
 
 		c.onConnectionOpen(c)
-		msg, _ := c.onNewMessage(c)
+		msg, err := c.onNewMessage(c)
+		if err != nil {
+			c.AbortWithError(err)
+		}
 		if msg != nil {
-			udp.send(remote, msg)
+			if _, err := udp.send(remote, msg); err != nil {
+				log.Printf("Send udp failed:", err)
+			}
 		}
 		c.onConnectionClosed(c)
 	}
