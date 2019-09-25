@@ -141,7 +141,7 @@ func (engine *Engine) SetUdpProc(n int) {
 	engine.udpProc = n
 }
 
-func (engine *Engine) SetAddress(address int) {
+func (engine *Engine) SetAddress(address string) {
 	engine.address = address
 }
 
