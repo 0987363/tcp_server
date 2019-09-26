@@ -152,9 +152,10 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to test server")
 	}
+	conn.Write([]byte{})
 	conn.Write([]byte("Test "))
 	time.Sleep(10 * time.Millisecond)
-	conn.Write([]byte("Message"))
+//	conn.Write([]byte("Message"))
 	time.Sleep(10 * time.Millisecond)
 	//	conn.Write([]byte("Te"))
 	time.Sleep(10 * time.Millisecond)
@@ -165,9 +166,9 @@ func main() {
 	time.Sleep(time.Second)
 	time.Sleep(time.Second)
 
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 2; i++ {
 		go func(i int) {
-			conn, err = net.Dial("udp", "localhost:9999")
+			conn, err := net.Dial("udp", "localhost:9999")
 			if err != nil {
 				log.Fatal("Failed to connect to test server")
 			}

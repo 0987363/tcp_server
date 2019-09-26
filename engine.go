@@ -62,7 +62,7 @@ func (engine *Engine) NewContext(conn Connection) *Context {
 	c.handlers[len(c.handlers) - 1] = conn.Run
 
 	c.onConnectionOpen = func(c *Context) {
-		c.isOpened = true
+		c.opened = true
 		if engine.onConnectionOpen != nil {
 			engine.onConnectionOpen(c)
 		}

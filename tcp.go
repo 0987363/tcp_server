@@ -26,7 +26,7 @@ func (tcp *Tcp) Run(c *Context) {
 			return
 		}
 
-		if !c.isOpened {
+		if !c.IsOpened() {
 			c.onConnectionOpen(c)
 		}
 

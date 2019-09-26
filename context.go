@@ -24,10 +24,14 @@ type Context struct {
 	onConnectionClosed func(c *Context)
 	onNewMessage       func(c *Context)
 
-	isOpened bool
+	opened bool
 }
 
 const abortIndex int = math.MaxInt8 / 2
+
+func (c *Context) IsOpened() bool {
+	return c.opened
+}
 
 func (c *Context) MsgIndex() int {
 	return c.msgIndex
