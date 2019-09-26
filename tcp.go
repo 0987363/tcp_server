@@ -21,12 +21,10 @@ func (tcp *Tcp) Run(c *Context) {
 	defer c.onConnectionClosed(c)
 
 	for !c.IsAborted() {
-		n, err := tcp.Recv(c.cache[c.size:])
-		if err != nil {
+		if err := c.Recv(); err != nil {
 			c.AbortWithError(err)
 			return
 		}
-		c.size += n
 
 		if !c.isOpened {
 			c.onConnectionOpen(c)

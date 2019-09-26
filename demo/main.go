@@ -66,6 +66,8 @@ func Auth() ts.HandlerFunc {
 			logger.Error("found err:", err)
 		}
 
+		logger.Info("msg cnt:", c.MsgCount())
+
 	}
 }
 
@@ -108,6 +110,7 @@ func main() {
 
 		c.Trim(len(message))
 		//		return []byte("hello world"), nil
+		return 
 		c.AbortWithError(errors.New("Compair failed."))
 	})
 
@@ -151,7 +154,7 @@ func main() {
 	}
 	conn.Write([]byte("Test "))
 	time.Sleep(10 * time.Millisecond)
-	//	conn.Write([]byte("Message"))
+	conn.Write([]byte("Message"))
 	time.Sleep(10 * time.Millisecond)
 	//	conn.Write([]byte("Te"))
 	time.Sleep(10 * time.Millisecond)

@@ -7,9 +7,6 @@ import (
 type Context struct {
 	Errors []error
 
-	global *HandlersMiddware
-	event  *HandlersMiddware
-
 	handlers HandlersChain
 	index    int
 
@@ -21,6 +18,7 @@ type Context struct {
 
 	cache []byte
 	size  int
+	cnt   int
 
 	onConnectionOpen   func(c *Context)
 	onConnectionClosed func(c *Context)
@@ -30,6 +28,10 @@ type Context struct {
 }
 
 const abortIndex int = math.MaxInt8 / 2
+
+func (c *Context) MsgCount() int {
+	return c.cnt
+}
 
 func (c *Context) RemoteAddr() string {
 	return c.conn.RemoteAddr()
@@ -74,8 +76,18 @@ func (c *Context) run() {
 	c.conn.Run(c)
 }
 
+func (c *Context) Recv() (error) {
+	n, err := c.conn.Recv(c.cache[c.size:])
+	if err != nil {
+		return err
+	}
+	c.size += n
+	c.cnt++
+	return nil
+}
+
 func (c *Context) Trim(length int) {
-	if length > c.size {
+	if length >= c.size {
 		c.size = 0
 		return
 	}
@@ -91,6 +103,7 @@ func (c *Context) ReadData() []byte {
 func (c *Context) Reset() {
 	c.Errors = c.Errors[:0]
 	c.size = 0
+	c.cnt = 0
 }
 
 /*
