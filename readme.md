@@ -23,6 +23,15 @@ func main() {
         c.Next()
     })
 
+	server.OnNewMessage(func(c *ts.Context) {
+		message := c.ReadData()
+
+		v, ok := c.Get("logger")
+
+		c.Trim(len(message))
+		c.AbortWithError(errors.New("read failed."))
+	})
+
     server.Listen()
 }
 ```
