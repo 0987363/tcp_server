@@ -49,11 +49,11 @@ func (c *Context) AbortWithError(err error) {
 	c.Errors = append(c.Errors, err)
 }
 
-func (c *Context) Data(data []byte) (int, error) {
+func (c *Context) Send(data []byte) (int, error) {
 	return c.conn.Send(data)
 }
-func (c *Context) DataWithError(data []byte, err error) {
-	c.Data(data)
+func (c *Context) SendWithError(data []byte, err error) {
+	c.Send(data)
 	c.AbortWithError(err)
 }
 
