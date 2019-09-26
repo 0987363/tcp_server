@@ -66,7 +66,7 @@ func Auth() ts.HandlerFunc {
 			logger.Error("found err:", err)
 		}
 
-		logger.Info("msg cnt:", c.MsgCount())
+		logger.Info("msg index:", c.MsgIndex())
 
 	}
 }

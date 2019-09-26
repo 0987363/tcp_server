@@ -18,7 +18,7 @@ type Context struct {
 
 	cache []byte
 	size  int
-	cnt   int
+	msgIndex   int
 
 	onConnectionOpen   func(c *Context)
 	onConnectionClosed func(c *Context)
@@ -29,8 +29,8 @@ type Context struct {
 
 const abortIndex int = math.MaxInt8 / 2
 
-func (c *Context) MsgCount() int {
-	return c.cnt
+func (c *Context) MsgIndex() int {
+	return c.msgIndex
 }
 
 func (c *Context) RemoteAddr() string {
@@ -82,7 +82,7 @@ func (c *Context) Recv() (error) {
 		return err
 	}
 	c.size += n
-	c.cnt++
+	c.msgIndex++
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (c *Context) ReadData() []byte {
 func (c *Context) Reset() {
 	c.Errors = c.Errors[:0]
 	c.size = 0
-	c.cnt = 0
+	c.msgIndex = 0
 }
 
 /*
