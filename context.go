@@ -84,6 +84,10 @@ func (c *Context) Recv() ([]byte, error) {
 	return c.cache[:c.size], nil
 }
 
+func (c *Context) ReadData() []byte {
+	return c.cache[:c.size]
+}
+
 func (c *Context) Reset() {
 	c.Errors = c.Errors[:0]
 	c.size = 0

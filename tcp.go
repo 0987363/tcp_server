@@ -26,7 +26,7 @@ func (tcp *Tcp) Run(c *Context) {
 	}
 
 	for !c.IsAborted() {
-		if err := c.Recv(); err != nil {
+		if _, err := c.Recv(); err != nil {
 			c.AbortWithError(err)
 			return
 		}

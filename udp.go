@@ -16,7 +16,7 @@ func (udp *Udp) RemoteAddr() string {
 
 func (udp *Udp) Run(c *Context) {
 	for {
-		if err := c.Recv(); err != nil {
+		if _, err := c.Recv(); err != nil {
 			c.AbortWithError(err)
 			return
 		}
