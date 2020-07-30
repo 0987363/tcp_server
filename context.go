@@ -74,28 +74,14 @@ func (c *Context) run() {
 	c.conn.Run(c)
 }
 
-func (c *Context) Recv() error {
-	n, err := c.conn.Recv(c.cache[c.size:])
+func (c *Context) Recv() ([]byte, error) {
+	n, err := c.conn.Recv(c.cache)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	c.size += n
+	c.size = n
 	c.msgIndex++
-	return nil
-}
-
-func (c *Context) Trim(length int) {
-	if length >= c.size {
-		c.size = 0
-		return
-	}
-
-	copy(c.cache, c.cache[length:c.size])
-	c.size -= length
-}
-
-func (c *Context) ReadData() []byte {
-	return c.cache[:c.size]
+	return c.cache[:c.size], nil
 }
 
 func (c *Context) Reset() {
