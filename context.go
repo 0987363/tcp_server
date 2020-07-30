@@ -16,22 +16,16 @@ type Context struct {
 
 	conn Connection
 
-	cache []byte
-	size  int
-	msgIndex   int
+	cache    []byte
+	size     int
+	msgIndex int
 
 	onConnectionOpen   func(c *Context)
 	onConnectionClosed func(c *Context)
 	onNewMessage       func(c *Context)
-
-	opened bool
 }
 
 const abortIndex int = math.MaxInt8 / 2
-
-func (c *Context) IsOpened() bool {
-	return c.opened
-}
 
 func (c *Context) MsgIndex() int {
 	return c.msgIndex
@@ -80,7 +74,7 @@ func (c *Context) run() {
 	c.conn.Run(c)
 }
 
-func (c *Context) Recv() (error) {
+func (c *Context) Recv() error {
 	n, err := c.conn.Recv(c.cache[c.size:])
 	if err != nil {
 		return err

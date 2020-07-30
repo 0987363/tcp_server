@@ -6,28 +6,29 @@ import (
 )
 
 type Tcp struct {
-	conn       net.Conn
-	timeout    time.Duration
-//	remtoeAddr string
+	conn    net.Conn
+	timeout time.Duration
+	//	remtoeAddr string
 }
 
 func (tcp *Tcp) RemoteAddr() string {
 	return tcp.conn.RemoteAddr().String()
-//	return tcp.remtoeAddr
+	//	return tcp.remtoeAddr
 }
 
 func (tcp *Tcp) Run(c *Context) {
 	defer tcp.close()
 	defer c.onConnectionClosed(c)
 
+	if c.onConnectionOpen != nil {
+		c.onConnectionOpen(c)
+		return
+	}
+
 	for !c.IsAborted() {
 		if err := c.Recv(); err != nil {
 			c.AbortWithError(err)
 			return
-		}
-
-		if !c.IsOpened() {
-			c.onConnectionOpen(c)
 		}
 
 		c.onNewMessage(c)

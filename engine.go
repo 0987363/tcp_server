@@ -46,31 +46,30 @@ func (s *Engine) OnConnectionClosed(callback func(c *Context)) {
 	s.onConnectionClosed = callback
 }
 
-func (s *Engine) OnNewMessage(callback func(c *Context) ) {
+func (s *Engine) OnNewMessage(callback func(c *Context)) {
 	s.onNewMessage = callback
 }
 
 func (engine *Engine) NewContext(conn Connection) *Context {
 	c := &Context{
-		conn:   conn,
-		cache:  make([]byte, engine.cacheSize),
-		engine: engine,
-		index:  -1,
-		handlers: make(HandlersChain, len(engine.handlers) + 1),
+		conn:     conn,
+		cache:    make([]byte, engine.cacheSize),
+		engine:   engine,
+		index:    -1,
+		handlers: make(HandlersChain, len(engine.handlers)+1),
 	}
 	copy(c.handlers, engine.handlers)
-	c.handlers[len(c.handlers) - 1] = conn.Run
+	c.handlers[len(c.handlers)-1] = conn.Run
 
-	c.onConnectionOpen = func(c *Context) {
-		c.opened = true
-		if engine.onConnectionOpen != nil {
+	if engine.onConnectionOpen != nil {
+		c.onConnectionOpen = func(c *Context) {
 			engine.onConnectionOpen(c)
 		}
-	}
-
-	c.onNewMessage = func(c *Context) {
-		if engine.onNewMessage != nil {
-			engine.onNewMessage(c)
+	} else {
+		c.onNewMessage = func(c *Context) {
+			if engine.onNewMessage != nil {
+				engine.onNewMessage(c)
+			}
 		}
 	}
 

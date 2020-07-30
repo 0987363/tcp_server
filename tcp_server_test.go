@@ -6,25 +6,21 @@ import (
 	"time"
 )
 
-func buildTestServer() *Server {
-	return New("localhost:9999")
-}
-
 func Test_accepting_new_client_callback(t *testing.T) {
-	server := buildTestServer()
-	server.Use(func(c *Client){
+	server := New("localhost:9999")
+	server.Use(func(c *Context) {
 		t.Error("Init logger.")
 	})
 
-//	server.OnConnectionOpen(func(c *Client) {
-//		t.Error("start connection")
-//	})
-	server.OnNewMessage(func(c *Client, message []byte) error {
-		t.Log("recv:", string(message))
-		return nil
+	//	server.OnConnectionOpen(func(c *Context) {
+	//		t.Error("start connection")
+	//	})
+	server.OnNewMessage(func(c *Context) {
+		c.Recv()
+		t.Log("recv:", string(c.ReadData()))
 	})
-	server.OnConnectionClosed(func(c *Client, err error) {
-		t.Log("close, err:", err)
+	server.OnConnectionClosed(func(c *Context) {
+		t.Log("close, err:", c.Errors)
 	})
 	go server.Listen()
 
@@ -33,6 +29,35 @@ func Test_accepting_new_client_callback(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 
 	conn, err := net.Dial("tcp", "localhost:9999")
+	if err != nil {
+		t.Fatal("Failed to connect to test server")
+	}
+	conn.Write([]byte("Test message\n"))
+	conn.Close()
+
+	// Wait for server
+	time.Sleep(20 * time.Millisecond)
+}
+
+func Test_accepting_new_client_connection_callback(t *testing.T) {
+	server := New("localhost:9998")
+	server.Use(func(c *Context) {
+		t.Error("Init logger.")
+	})
+
+	server.OnConnectionOpen(func(c *Context) {
+		t.Log("new connection.")
+	})
+	server.OnConnectionClosed(func(c *Context) {
+		t.Log("close, err:", c.Errors)
+	})
+	go server.Listen()
+
+	// Wait for server
+	// If test fails - increase this value
+	time.Sleep(20 * time.Millisecond)
+
+	conn, err := net.Dial("tcp", "localhost:9998")
 	if err != nil {
 		t.Fatal("Failed to connect to test server")
 	}
